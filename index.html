@@ -21,6 +21,15 @@
 
       <button id="soundBtn">🔊 Sound On</button>
     </div>
+    <div id="mobileControls">
+      <button class="control-btn up" data-direction="up">▲</button>
+
+      <div class="control-row">
+        <button class="control-btn" data-direction="left">◀</button>
+        <button class="control-btn" data-direction="down">▼</button>
+        <button class="control-btn" data-direction="right">▶</button>
+      </div>
+    </div>
   </body>
 </html>
 
@@ -120,6 +129,7 @@
       0 0 0 3px #b17a4e,
       0 0 0 6px #6f4b32,
       0 14px 30px rgba(55, 36, 25, 0.42);
+    touch-action: none;
   }
 
   /* Score panel */
@@ -255,6 +265,75 @@
 
     #ui {
       flex-wrap: wrap;
+    }
+  }
+  #mobileControls {
+    display: none;
+    margin-top: 14px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+
+  .control-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .control-btn {
+    width: 58px;
+    height: 48px;
+
+    padding: 0;
+    margin: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #fff4cf;
+    background: #65a957;
+
+    border: 3px solid #315c35;
+    border-radius: 4px;
+
+    font-family: monospace;
+    font-size: 20px;
+    font-weight: bold;
+
+    box-shadow:
+      0 4px 0 #27472a,
+      inset 2px 2px 0 rgba(255, 255, 255, 0.2);
+
+    touch-action: manipulation;
+  }
+
+  .control-btn:active {
+    transform: translateY(3px);
+
+    box-shadow:
+      0 1px 0 #27472a,
+      inset 2px 2px 0 rgba(0, 0, 0, 0.12);
+  }
+
+  #mobileControls .up {
+    display: flex;
+    margin: 0 auto 8px;
+  }
+
+  @media (max-width: 600px) {
+    #mobileControls {
+      display: block;
+    }
+
+    #ui {
+      margin-top: 10px;
+    }
+
+    .control-btn {
+      width: 62px;
+      height: 50px;
     }
   }
 </style>
@@ -636,6 +715,39 @@
 
     const soundBtn = document.getElementById("soundBtn");
     // ==== Helper functions ===================================================
+    const mobileControls = document.querySelectorAll(".control-btn");
+
+    const setDirection = (directionName) => {
+      const direction = DIRECTIONS[directionName];
+
+      if (!direction || isGameOver) return;
+
+      // Prevent instant 180° turns
+      if (direction.x === -direction.x && direction.y === -direction.y) {
+        return;
+      }
+
+      if (direction.x !== -direction.x || direction.y !== -direction.y) {
+        nextDirection = direction;
+      }
+    };
+
+    mobileControls.forEach((button) => {
+      const direction = button.dataset.direction;
+
+      button.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+
+        const directionMap = {
+          up: "ArrowUp",
+          down: "ArrowDown",
+          left: "ArrowLeft",
+          right: "ArrowRight",
+        };
+
+        setDirection(directionMap[direction]);
+      });
+    });
     const randomCell = () => ({
       x: Math.floor(Math.random() * COLS),
       y: Math.floor(Math.random() * ROWS),
@@ -958,15 +1070,48 @@
     };
 
     // ==== Input handling =====================================================
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    canvas.addEventListener(
+      "touchstart",
+      (e) => {
+        const touch = e.touches[0];
+
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+      },
+      { passive: true },
+    );
+
+    canvas.addEventListener(
+      "touchend",
+      (e) => {
+        const touch = e.changedTouches[0];
+
+        const dx = touch.clientX - touchStartX;
+        const dy = touch.clientY - touchStartY;
+
+        const minSwipe = 20;
+
+        if (Math.abs(dx) < minSwipe && Math.abs(dy) < minSwipe) {
+          return;
+        }
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+          setDirection(dx > 0 ? DIRECTIONS.ArrowRight : DIRECTIONS.ArrowLeft);
+        } else {
+          setDirection(dy > 0 ? DIRECTIONS.ArrowDown : DIRECTIONS.ArrowUp);
+        }
+      },
+      { passive: true },
+    );
     const handleKey = (e) => {
       const dir = DIRECTIONS[e.key];
+      if (!dir) return;
 
-      if (dir) {
-        initAudio();
-
-        e.preventDefault();
-        nextDirection = dir;
-      }
+      e.preventDefault();
+      setDirection(e.key);
     };
 
     const updateSoundButton = () => {
