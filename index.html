@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Snake Game – JavaScript</title>
+    <style>
+      /* --- CSS is in‑lined here for simplicity (see section 2) --- */
+    </style>
+  </head>
+  <body>
+    <h1>🐍 Snake Garden</h1>
+
+    <div class="subtitle">Eat • Grow • Explore</div>
+
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <div id="ui">
+      <p>🍎 <span id="score">0</span></p>
+
+      <button id="restartBtn">↻ Restart</button>
+
+      <button id="soundBtn">🔊 Sound On</button>
+    </div>
+  </body>
+</html>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    color: #fff1c7;
+    font-family: "Courier New", monospace;
+
+    /* Cozy sunset meadow */
+    background: radial-gradient(
+      circle at 50% 25%,
+      #f6d98b 0%,
+      #d99b61 35%,
+      #9a684c 65%,
+      #5b463b 100%
+    );
+
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Tiny pixel-like atmosphere */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+
+    background-image:
+      radial-gradient(circle, rgba(255, 244, 190, 0.22) 1px, transparent 1px),
+      radial-gradient(circle, rgba(90, 65, 45, 0.12) 1px, transparent 1px);
+
+    background-size:
+      32px 32px,
+      48px 48px;
+    background-position:
+      0 0,
+      16px 16px;
+
+    opacity: 0.45;
+  }
+
+  /* Game title */
+  h1 {
+    margin: 0 0 12px;
+
+    font-size: 28px;
+    line-height: 1;
+
+    color: #fff4cf;
+
+    /* Pixel-style text */
+    text-shadow:
+      3px 3px 0 #765033,
+      5px 5px 0 rgba(70, 45, 30, 0.25);
+
+    letter-spacing: 1px;
+  }
+
+  /* Small decorative subtitle if you add one */
+  .subtitle {
+    margin: -4px 0 12px;
+
+    color: #ffe7ae;
+    font-size: 12px;
+    opacity: 0.9;
+  }
+
+  /* Wooden game frame */
+  canvas {
+    display: block;
+
+    width: 400px;
+    height: 400px;
+
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+
+    background: #6fa653;
+
+    border: 6px solid #593c28;
+    border-radius: 4px;
+
+    box-shadow:
+      0 0 0 3px #b17a4e,
+      0 0 0 6px #6f4b32,
+      0 14px 30px rgba(55, 36, 25, 0.42);
+  }
+
+  /* Score panel */
+  #ui {
+    margin-top: 14px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    padding: 8px 12px;
+
+    background: #765137;
+
+    border: 3px solid #4e3525;
+    box-shadow:
+      0 0 0 2px #b17a4e,
+      0 5px 0 rgba(55, 36, 25, 0.25);
+
+    border-radius: 4px;
+  }
+
+  /* Score */
+  #ui p {
+    margin: 0 8px 0 0;
+
+    min-width: 90px;
+
+    color: #fff1c7;
+    font-size: 15px;
+    font-weight: bold;
+
+    text-shadow: 2px 2px 0 #493222;
+  }
+
+  #score {
+    color: #ffe17c;
+  }
+
+  /* Pixel buttons */
+  button {
+    appearance: none;
+
+    color: #fff4cf;
+
+    background: #65a957;
+
+    border: 3px solid #315c35;
+    border-radius: 3px;
+
+    padding: 7px 12px;
+
+    font-family: "Courier New", monospace;
+    font-size: 13px;
+    font-weight: bold;
+
+    cursor: pointer;
+
+    box-shadow:
+      0 3px 0 #27472a,
+      inset 2px 2px 0 rgba(255, 255, 255, 0.2);
+
+    transition:
+      transform 0.08s ease,
+      background 0.08s ease;
+  }
+
+  /* Hover */
+  button:hover {
+    background: #78bb64;
+    transform: translateY(-1px);
+  }
+
+  /* Press */
+  button:active {
+    transform: translateY(2px);
+
+    box-shadow:
+      0 1px 0 #27472a,
+      inset 2px 2px 0 rgba(0, 0, 0, 0.12);
+  }
+
+  /* Restart button */
+  #restartBtn {
+    background: #c9784f;
+    border-color: #70412e;
+
+    box-shadow:
+      0 3px 0 #583223,
+      inset 2px 2px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  #restartBtn:hover {
+    background: #db8960;
+  }
+
+  /* Sound muted */
+  button.muted {
+    background: #6d6257;
+    border-color: #4d443c;
+
+    opacity: 0.9;
+
+    box-shadow:
+      0 3px 0 #39332e,
+      inset 2px 2px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  /* Game over overlay text can use this style if desired */
+  .game-over {
+    color: #fff1c7;
+
+    text-shadow:
+      3px 3px 0 #6b382f,
+      5px 5px 0 rgba(50, 30, 20, 0.25);
+  }
+
+  /* Mobile */
+  @media (max-width: 500px) {
+    body {
+      padding: 12px;
+    }
+
+    h1 {
+      font-size: 22px;
+    }
+
+    canvas {
+      width: min(90vw, 400px);
+      height: min(90vw, 400px);
+    }
+
+    #ui {
+      flex-wrap: wrap;
+    }
+  }
+</style>
+<script>
+  // ==== Sound Effects =========================================================
+
+  let audioContext;
+  let soundEnabled = true;
+  // ============================================================
+  // Cozy RPG Background Music
+  // Original composition - Web Audio only
+  // ============================================================
+
+  let musicPlaying = false;
+  let musicTimer = null;
+  let musicStep = 0;
+
+  const BPM = 96; // livelier, farm-morning feel
+  const BEAT = 60 / BPM;
+
+  // Notes
+  const N = {
+    G3: 196.0,
+    B3: 246.94,
+    C4: 261.63,
+    D4: 293.66,
+    E3: 164.81,
+    Fs4: 369.99,
+    A4: 440.0,
+    B4: 493.88,
+    C5: 523.25,
+    D5: 587.33,
+    E5: 659.25,
+    Fs5: 739.99,
+    G4: 392.0,
+    E4: 329.63,
+    G5: 783.99,
+    A5: 880.0,
+  };
+
+  // ------------------------------------------------------------
+  // Chord progression (G – Em – C – D | G – Bm – C – D)
+  // chord[0] is the root (used for the bass)
+  // ------------------------------------------------------------
+
+  const CHORDS = [
+    [N.G3, N.B3, N.D4], // G
+    [N.E3, N.G3, N.B3], // Em
+    [N.C4, N.E4, N.G4], // C
+    [N.D4, N.Fs4, N.A4], // D
+
+    [N.G3, N.B3, N.D4], // G
+    [N.B3, N.D4, N.Fs4], // Bm
+    [N.C4, N.E4, N.G4], // C
+    [N.D4, N.Fs4, N.A4], // D
+  ];
+
+  // ------------------------------------------------------------
+  // Melody (8 steps per chord, null = rest)
+  // ------------------------------------------------------------
+
+  const MELODY = [
+    // G
+    N.B4,
+    null,
+    N.D5,
+    null,
+    N.E5,
+    N.D5,
+    N.B4,
+    null,
+    // Em
+    N.G4,
+    null,
+    N.B4,
+    N.D5,
+    N.E5,
+    null,
+    N.D5,
+    null,
+    // C
+    N.E5,
+    null,
+    N.G5,
+    N.E5,
+    N.D5,
+    null,
+    N.C5,
+    null,
+    // D
+    N.A4,
+    null,
+    N.D5,
+    null,
+    N.B4,
+    N.D5,
+    N.A4,
+    null,
+
+    // G
+    N.D5,
+    null,
+    N.E5,
+    N.G5,
+    N.E5,
+    N.D5,
+    N.B4,
+    null,
+    // Bm
+    N.D5,
+    null,
+    N.Fs5,
+    N.D5,
+    N.B4,
+    null,
+    N.A4,
+    null,
+    // C
+    N.G4,
+    N.B4,
+    N.C5,
+    N.E5,
+    N.D5,
+    null,
+    N.C5,
+    null,
+    // D (resolves back to the loop)
+    N.B4,
+    null,
+    N.A4,
+    null,
+    N.A4,
+    null,
+    null,
+    null,
+  ];
+
+  // ------------------------------------------------------------
+  // Plucky note (short attack, quick decay, mellow filter)
+  // ------------------------------------------------------------
+
+  const playSoftNote = (frequency, duration, volume, type = "triangle") => {
+    if (!soundEnabled || !audioContext) return;
+
+    const now = audioContext.currentTime;
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const filter = audioContext.createBiquadFilter();
+
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, now);
+
+    // Warm, wooden tone
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(2400, now);
+    filter.frequency.exponentialRampToValueAtTime(900, now + duration);
+
+    // Pluck envelope
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(volume, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    oscillator.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start(now);
+    oscillator.stop(now + duration + 0.05);
+  };
+
+  // ------------------------------------------------------------
+  // Bass (soft, round)
+  // ------------------------------------------------------------
+
+  const playBass = (frequency) => {
+    playSoftNote(frequency, BEAT * 1.5, 0.03, "sine");
+  };
+
+  // ------------------------------------------------------------
+  // Guitar-style strummed arpeggio
+  // ------------------------------------------------------------
+
+  const playArpeggio = (chord) => {
+    // Two passes per chord for a gentle rolling feel
+    [0, 2].forEach((beatOffset) => {
+      chord.forEach((note, index) => {
+        setTimeout(
+          () => {
+            playSoftNote(note * 2, BEAT * 0.9, 0.01, "triangle");
+          },
+          (beatOffset * BEAT + index * BEAT * 0.25) * 1000,
+        );
+      });
+    });
+  };
+
+  // ------------------------------------------------------------
+  // Music loop
+  // ------------------------------------------------------------
+
+  const playMusicStep = () => {
+    if (!soundEnabled || !audioContext) return;
+
+    const step = musicStep % MELODY.length;
+
+    // Melody: short and bouncy, like a flute/pluck
+    const melodyNote = MELODY[step];
+
+    if (melodyNote) {
+      playSoftNote(melodyNote, BEAT * 0.9, 0.03, "triangle");
+    }
+
+    // Change chord every 8 steps
+    if (step % 8 === 0) {
+      const chord = CHORDS[Math.floor(step / 8) % CHORDS.length];
+
+      playBass(chord[0] / 2);
+      playArpeggio(chord);
+    }
+
+    musicStep++;
+  };
+
+  const startMusic = () => {
+    if (musicPlaying || !soundEnabled) {
+      return;
+    }
+
+    initAudio();
+
+    musicPlaying = true;
+    musicStep = 0;
+
+    playMusicStep();
+
+    musicTimer = setInterval(playMusicStep, BEAT * 500);
+  };
+
+  const stopMusic = () => {
+    musicPlaying = false;
+
+    if (musicTimer) {
+      clearInterval(musicTimer);
+      musicTimer = null;
+    }
+  };
+  const initAudio = () => {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume();
+    }
+  };
+
+  const playTone = ({
+    frequency = 440,
+    duration = 0.08,
+    type = "sine",
+    volume = 0.08,
+    slideTo = null,
+  }) => {
+    if (!soundEnabled) return;
+
+    initAudio();
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = type;
+
+    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+
+    if (slideTo) {
+      oscillator.frequency.linearRampToValueAtTime(
+        slideTo,
+        audioContext.currentTime + duration,
+      );
+    }
+
+    gain.gain.setValueAtTime(volume, audioContext.currentTime);
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.001,
+      audioContext.currentTime + duration,
+    );
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + duration);
+  };
+  // Normal food
+  const playFoodSound = () => {
+    playTone({
+      frequency: 620,
+      slideTo: 820,
+      duration: 0.09,
+      type: "sine",
+      volume: 0.055,
+    });
+  };
+
+  const playSpecialFoodSound = () => {
+    playTone({
+      frequency: 523,
+      slideTo: 880,
+      duration: 0.16,
+      type: "triangle",
+      volume: 0.07,
+    });
+
+    setTimeout(() => {
+      playTone({
+        frequency: 784,
+        slideTo: 1046,
+        duration: 0.2,
+        type: "sine",
+        volume: 0.055,
+      });
+    }, 100);
+  };
+  // Game over
+  const playGameOverSound = () => {
+    playTone({
+      frequency: 500,
+      slideTo: 180,
+      duration: 0.45,
+      type: "sawtooth",
+      volume: 0.07,
+    });
+  };
+
+  // Restart
+  const playRestartSound = () => {
+    playTone({
+      frequency: 400,
+      slideTo: 700,
+      duration: 0.12,
+      type: "sine",
+      volume: 0.06,
+    });
+  };
+  (() => {
+    // ==== Configuration ======================================================
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const restartBtn = document.getElementById("restartBtn");
+
+    const CELL_SIZE = 20; // size of a single grid square (px)
+    const COLS = canvas.width / CELL_SIZE; // 20 for a 400×400 canvas
+    const ROWS = canvas.height / CELL_SIZE;
+    const FRAME_RATE = 5; // frames per second (snake speed)
+    const DIRECTIONS = {
+      ArrowUp: { x: 0, y: -1 },
+      ArrowDown: { x: 0, y: 1 },
+      ArrowLeft: { x: -1, y: 0 },
+      ArrowRight: { x: 1, y: 0 },
+      // WASD support
+      w: { x: 0, y: -1 },
+      s: { x: 0, y: 1 },
+      a: { x: -1, y: 0 },
+      d: { x: 1, y: 0 },
+    };
+
+    // ==== Game state =========================================================
+    let snake; // array of {x, y} cells – head is first element
+    let direction; // current direction vector
+    let nextDirection; // direction set by player, applied on next tick
+    let food; // {x, y}
+    let score;
+    let gameLoopId;
+    let isGameOver;
+    let isSpecialFood = false;
+
+    const soundBtn = document.getElementById("soundBtn");
+    // ==== Helper functions ===================================================
+    const randomCell = () => ({
+      x: Math.floor(Math.random() * COLS),
+      y: Math.floor(Math.random() * ROWS),
+    });
+
+    // Make sure food never spawns on the snake
+    const isFoodOnSnake = (newFood, size = 1) => {
+      return snake.some((seg) => {
+        return (
+          seg.x >= newFood.x &&
+          seg.x < newFood.x + size &&
+          seg.y >= newFood.y &&
+          seg.y < newFood.y + size
+        );
+      });
+    };
+
+    const placeFood = (special = false) => {
+      const size = special ? 2 : 1;
+
+      let newFood;
+
+      do {
+        newFood = randomCell(size);
+      } while (isFoodOnSnake(newFood, size));
+
+      food = newFood;
+      isSpecialFood = special;
+    };
+
+    const resetGame = () => {
+      snake = [
+        { x: Math.floor(COLS / 2), y: Math.floor(ROWS / 2) },
+        // start with length 3 for a bit of challenge
+        { x: Math.floor(COLS / 2) - 1, y: Math.floor(ROWS / 2) },
+        { x: Math.floor(COLS / 2) - 2, y: Math.floor(ROWS / 2) },
+      ];
+      direction = { x: 1, y: 0 }; // moving right initially
+      nextDirection = direction;
+      score = 0;
+      scoreEl.textContent = score;
+      isGameOver = false;
+      isSpecialFood = false;
+      placeFood();
+      clearInterval(gameLoopId);
+      gameLoopId = setInterval(gameTick, 1000 / FRAME_RATE); // speed up as score increases
+    };
+
+    const gameOver = () => {
+      isGameOver = true;
+      clearInterval(gameLoopId);
+      playGameOverSound();
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ff5555";
+      ctx.font = "48px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Game Over", canvas.width / 2, canvas.height / 2 - 20);
+      ctx.font = "24px sans-serif";
+      ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2 + 30);
+    };
+
+    // ==== Rendering ==========================================================
+    // const drawCell = (cell, color, size = 1) => {
+    //   ctx.fillStyle = color;
+
+    //   ctx.fillRect(
+    //     cell.x * CELL_SIZE,
+    //     cell.y * CELL_SIZE,
+    //     CELL_SIZE * size,
+    //     CELL_SIZE * size,
+    //   );
+    // };
+    // const render = () => {
+    //   // clear board
+    //   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    //   // draw food
+    //   if (isSpecialFood) {
+    //     drawCell(food, "#ffcc00", 2);
+
+    //     // Small highlight
+    //     ctx.fillStyle = "#fff3a3";
+    //     ctx.fillRect(food.x * CELL_SIZE + 4, food.y * CELL_SIZE + 4, 6, 6);
+    //   } else {
+    //     drawCell(food, "#ff4444");
+    //   }
+
+    //   // draw snake (head a bit brighter)
+    //   snake.forEach((seg, idx) => {
+    //     drawCell(seg, idx === 0 ? "#00ff00" : "#009900");
+    //   });
+    // };
+    const drawPixelRect = (x, y, width, height, color) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(Math.round(x), Math.round(y), width, height);
+    };
+
+    const drawSnakeSegment = (seg, idx) => {
+      const x = seg.x * CELL_SIZE;
+      const y = seg.y * CELL_SIZE;
+
+      // Dark outline
+      drawPixelRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4, "#245c3a");
+
+      // Main body
+      drawPixelRect(
+        x + 4,
+        y + 4,
+        CELL_SIZE - 8,
+        CELL_SIZE - 8,
+        idx === 0 ? "#42c96b" : "#36a957",
+      );
+
+      // Cozy light pixel highlight
+      drawPixelRect(x + 5, y + 5, 5, 3, idx === 0 ? "#9af58c" : "#72d878");
+
+      // Dark bottom/right pixels
+      drawPixelRect(x + 5, y + CELL_SIZE - 6, CELL_SIZE - 9, 2, "#258348");
+      drawPixelRect(x + CELL_SIZE - 6, y + 6, 2, CELL_SIZE - 9, "#258348");
+
+      // Small shine
+      if (idx === 0) {
+        drawPixelRect(x + 5, y + 5, 2, 2, "#d5ffb8");
+
+        drawSnakeEyes(seg);
+      }
+    };
+
+    const drawSnakeEyes = (head) => {
+      const x = head.x * CELL_SIZE;
+      const y = head.y * CELL_SIZE;
+
+      let eye1;
+      let eye2;
+
+      if (direction.x === 1) {
+        // Right
+        eye1 = { x: x + 14, y: y + 6 };
+        eye2 = { x: x + 14, y: y + 14 };
+      } else if (direction.x === -1) {
+        // Left
+        eye1 = { x: x + 6, y: y + 6 };
+        eye2 = { x: x + 6, y: y + 14 };
+      } else if (direction.y === -1) {
+        // Up
+        eye1 = { x: x + 6, y: y + 6 };
+        eye2 = { x: x + 14, y: y + 6 };
+      } else {
+        // Down
+        eye1 = { x: x + 6, y: y + 14 };
+        eye2 = { x: x + 14, y: y + 14 };
+      }
+
+      [eye1, eye2].forEach((eye) => {
+        // Dark eye socket
+        drawPixelRect(eye.x - 3, eye.y - 3, 6, 6, "#183a29");
+
+        // Cream pixel eye
+        drawPixelRect(eye.x - 2, eye.y - 2, 4, 4, "#fff4c2");
+
+        // Pupil
+        drawPixelRect(eye.x, eye.y - 1, 2, 2, "#172019");
+      });
+    };
+    const drawNormalFood = () => {
+      const x = food.x * CELL_SIZE;
+      const y = food.y * CELL_SIZE;
+
+      // Tiny shadow
+      drawPixelRect(x + 5, y + 15, 10, 2, "rgba(60, 40, 30, 0.35)");
+
+      // Apple dark outline
+      drawPixelRect(x + 5, y + 5, 10, 10, "#7d2630");
+      drawPixelRect(x + 3, y + 7, 14, 7, "#7d2630");
+
+      // Apple body
+      drawPixelRect(x + 6, y + 5, 8, 10, "#e05252");
+      drawPixelRect(x + 4, y + 8, 12, 5, "#e05252");
+
+      // Warm highlight
+      drawPixelRect(x + 6, y + 7, 3, 3, "#ffaaa0");
+      drawPixelRect(x + 5, y + 10, 2, 2, "#ff7770");
+
+      // Stem
+      drawPixelRect(x + 10, y + 3, 2, 4, "#65452e");
+
+      // Leaf
+      drawPixelRect(x + 12, y + 4, 4, 2, "#6fbd55");
+      drawPixelRect(x + 13, y + 3, 3, 2, "#82d265");
+    };
+    const drawSpecialFood = () => {
+      const x = food.x * CELL_SIZE;
+      const y = food.y * CELL_SIZE;
+      const size = CELL_SIZE * 2;
+
+      // Shadow
+      drawPixelRect(x + 4, y + size - 4, size - 8, 3, "rgba(70, 45, 20, 0.4)");
+
+      // Dark brown outline
+      drawPixelRect(x + 2, y + 2, size - 4, size - 4, "#82551e");
+
+      // Golden body
+      drawPixelRect(x + 5, y + 5, size - 10, size - 10, "#e9a83a");
+
+      // Bright center
+      drawPixelRect(x + 8, y + 8, size - 16, size - 16, "#ffd866");
+
+      // Pixel corners / shading
+      drawPixelRect(x + 5, y + 5, 5, 4, "#fff0a3");
+      drawPixelRect(x + size - 9, y + 5, 4, size - 9, "#c87925");
+      drawPixelRect(x + 5, y + size - 9, size - 10, 4, "#c87925");
+
+      // Pixel star
+      const cx = x + size / 2;
+      const cy = y + size / 2;
+
+      drawPixelRect(cx - 2, cy - 8, 4, 16, "#fff8d0");
+      drawPixelRect(cx - 8, cy - 2, 16, 4, "#fff8d0");
+
+      // Star center
+      drawPixelRect(cx - 4, cy - 4, 8, 8, "#ffffff");
+
+      // Tiny sparkle
+      drawPixelRect(x + 9, y + 9, 3, 3, "#ffffff");
+    };
+    // const drawBackground = () => {
+    //   ctx.fillStyle = "#0b1220";
+    //   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    //   // Subtle grid
+    //   ctx.strokeStyle = "rgba(255,255,255,0.035)";
+    //   ctx.lineWidth = 1;
+
+    //   for (let x = 0; x <= canvas.width; x += CELL_SIZE) {
+    //     ctx.beginPath();
+    //     ctx.moveTo(x, 0);
+    //     ctx.lineTo(x, canvas.height);
+    //     ctx.stroke();
+    //   }
+
+    //   for (let y = 0; y <= canvas.height; y += CELL_SIZE) {
+    //     ctx.beginPath();
+    //     ctx.moveTo(0, y);
+    //     ctx.lineTo(canvas.width, y);
+    //     ctx.stroke();
+    //   }
+    // };
+
+    const render = () => {
+      drawBackground();
+
+      // Food
+      if (isSpecialFood) {
+        drawSpecialFood();
+      } else {
+        drawNormalFood();
+      }
+
+      // Snake
+      snake.forEach((seg, idx) => {
+        drawSnakeSegment(seg, idx);
+      });
+    };
+    // ==== Game tick ==========================================================
+    const gameTick = () => {
+      // Apply queued direction (prevent reversing 180°)
+      if (
+        nextDirection.x !== -direction.x ||
+        nextDirection.y !== -direction.y
+      ) {
+        direction = nextDirection;
+      }
+
+      // Compute new head position
+      const newHead = {
+        x: (snake[0].x + direction.x + COLS) % COLS, // wrap-around
+        y: (snake[0].y + direction.y + ROWS) % ROWS,
+      };
+
+      // Collision with self?
+      if (snake.some((seg) => seg.x === newHead.x && seg.y === newHead.y)) {
+        gameOver();
+        return;
+      }
+
+      // Insert new head
+      snake.unshift(newHead);
+
+      // Did we eat the food?
+      const foodSize = isSpecialFood ? 2 : 1;
+
+      const ateFood =
+        newHead.x >= food.x &&
+        newHead.x < food.x + foodSize &&
+        newHead.y >= food.y &&
+        newHead.y < food.y + foodSize;
+
+      if (ateFood) {
+        if (isSpecialFood) {
+          score += 2;
+          playSpecialFoodSound();
+        } else {
+          score += 1;
+          playFoodSound();
+        }
+
+        scoreEl.textContent = score;
+
+        clearInterval(gameLoopId);
+
+        gameLoopId = setInterval(gameTick, 1000 / (FRAME_RATE + score * 0.3));
+
+        placeFood(score % 5 === 0);
+      } else {
+        snake.pop();
+      }
+
+      render();
+    };
+
+    // ==== Input handling =====================================================
+    const handleKey = (e) => {
+      const dir = DIRECTIONS[e.key];
+
+      if (dir) {
+        initAudio();
+
+        e.preventDefault();
+        nextDirection = dir;
+      }
+    };
+
+    const updateSoundButton = () => {
+      soundBtn.textContent = soundEnabled ? "🔊 Sound On" : "🔇 Sound Off";
+
+      soundBtn.classList.toggle("muted", !soundEnabled);
+    };
+
+    const backgroundObjects = [];
+    const FIREFLY_COUNT = 10;
+
+    const createBackground = () => {
+      backgroundObjects.length = 0;
+
+      // Grass patches
+      for (let i = 0; i < 45; i++) {
+        backgroundObjects.push({
+          type: "grass",
+          x: Math.floor(Math.random() * COLS),
+          y: Math.floor(Math.random() * ROWS),
+          variant: Math.floor(Math.random() * 3),
+        });
+      }
+
+      // Flowers
+      for (let i = 0; i < 18; i++) {
+        backgroundObjects.push({
+          type: "flower",
+          x: Math.floor(Math.random() * COLS),
+          y: Math.floor(Math.random() * ROWS),
+          variant: Math.floor(Math.random() * 4),
+        });
+      }
+
+      // Rocks
+      for (let i = 0; i < 10; i++) {
+        backgroundObjects.push({
+          type: "rock",
+          x: Math.floor(Math.random() * COLS),
+          y: Math.floor(Math.random() * ROWS),
+        });
+      }
+
+      // Bushes around edges
+      for (let i = 0; i < 12; i++) {
+        backgroundObjects.push({
+          type: "bush",
+          x:
+            Math.random() < 0.5
+              ? Math.floor(Math.random() * 4)
+              : COLS - 1 - Math.floor(Math.random() * 4),
+          y: Math.floor(Math.random() * ROWS),
+        });
+      }
+    };
+    const drawPixelGrass = (x, y, variant) => {
+      const px = x * CELL_SIZE;
+      const py = y * CELL_SIZE;
+
+      ctx.fillStyle = ["#4f8f45", "#5c9948", "#6ba653"][variant];
+
+      // Pixel blades
+      ctx.fillRect(px + 4, py + 13, 2, 5);
+      ctx.fillRect(px + 7, py + 10, 2, 8);
+      ctx.fillRect(px + 10, py + 14, 2, 4);
+
+      ctx.fillStyle = "#8bbb5d";
+      ctx.fillRect(px + 7, py + 10, 2, 3);
+    };
+    const drawPixelFlower = (x, y, variant) => {
+      const px = x * CELL_SIZE;
+      const py = y * CELL_SIZE;
+
+      const colors = ["#f7d66b", "#f28b8b", "#d8a7e8", "#f4f0d0"];
+
+      const color = colors[variant];
+
+      // stem
+      ctx.fillStyle = "#3f7138";
+      ctx.fillRect(px + 9, py + 10, 2, 7);
+
+      // petals
+      ctx.fillStyle = color;
+
+      ctx.fillRect(px + 7, py + 5, 6, 4);
+      ctx.fillRect(px + 5, py + 7, 10, 4);
+      ctx.fillRect(px + 8, py + 3, 4, 8);
+
+      // center
+      ctx.fillStyle = "#e9b84c";
+      ctx.fillRect(px + 8, py + 7, 4, 4);
+    };
+    const drawPixelRock = (x, y) => {
+      const px = x * CELL_SIZE;
+      const py = y * CELL_SIZE;
+
+      ctx.fillStyle = "#65705d";
+
+      ctx.fillRect(px + 5, py + 11, 10, 5);
+      ctx.fillRect(px + 7, py + 8, 7, 7);
+      ctx.fillRect(px + 9, py + 6, 4, 3);
+
+      ctx.fillStyle = "#87917c";
+      ctx.fillRect(px + 8, py + 8, 4, 3);
+
+      ctx.fillStyle = "#4d5749";
+      ctx.fillRect(px + 5, py + 15, 10, 2);
+    };
+    const drawPixelBush = (x, y) => {
+      const px = x * CELL_SIZE;
+      const py = y * CELL_SIZE;
+
+      ctx.fillStyle = "#315f36";
+
+      ctx.fillRect(px + 2, py + 10, 16, 8);
+      ctx.fillRect(px + 5, py + 7, 10, 10);
+      ctx.fillRect(px + 8, py + 5, 6, 5);
+
+      ctx.fillStyle = "#4f8f45";
+
+      ctx.fillRect(px + 5, py + 8, 6, 5);
+      ctx.fillRect(px + 11, py + 10, 5, 4);
+    };
+    const drawBackground = () => {
+      // Base grass
+      ctx.fillStyle = "#6fa653";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Pixel tile texture
+      for (let x = 0; x < COLS; x++) {
+        for (let y = 0; y < ROWS; y++) {
+          if ((x + y) % 3 === 0) {
+            ctx.fillStyle = "#74aa56";
+            ctx.fillRect(x * CELL_SIZE + 2, y * CELL_SIZE + 3, 2, 2);
+          }
+        }
+      }
+
+      backgroundObjects.forEach((obj) => {
+        if (obj.type === "grass") {
+          drawPixelGrass(obj.x, obj.y, obj.variant);
+        }
+
+        if (obj.type === "flower") {
+          drawPixelFlower(obj.x, obj.y, obj.variant);
+        }
+
+        if (obj.type === "rock") {
+          drawPixelRock(obj.x, obj.y);
+        }
+
+        if (obj.type === "bush") {
+          drawPixelBush(obj.x, obj.y);
+        }
+      });
+    };
+    window.addEventListener("keydown", handleKey);
+    restartBtn.addEventListener("click", () => {
+      initAudio();
+
+      playRestartSound();
+      resetGame();
+    });
+    soundBtn.addEventListener("click", () => {
+      soundEnabled = !soundEnabled;
+
+      if (soundEnabled) {
+        initAudio();
+        startMusic();
+
+        playTone({
+          frequency: 600,
+          slideTo: 800,
+          duration: 0.1,
+          type: "sine",
+          volume: 0.06,
+        });
+      } else {
+        stopMusic();
+      }
+
+      updateSoundButton();
+    });
+
+    // ==== Start the game =====================================================
+    resetGame();
+    updateSoundButton();
+    startMusic();
+    createBackground();
+  })();
+</script>
